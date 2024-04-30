@@ -1,1 +1,2 @@
-# workshop_comptext2024
+Workshop Comptext 2024 - Introduction to Text Analysis in R
+

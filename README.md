@@ -5,7 +5,7 @@ The workshop introduced the attendees to basic concepts that are relevent to ana
 Attendees were also given a practical overview of some of the introductory models and tools. 
 The examples shown are a shorter summary of resources provided by the Department of [Communication Science at the VU Amsterdam](https://github.com/ccs-amsterdam) and the book [Computational Analysis of Communication](https://cssbook.net) by Van Atteveldt, Trilling and Arcila (2022). 
 
--[Basics in R](https://github.com/deniseroth97/workshop_comptext2024/blob/main/README.md#basics-in-r)
+- [Basics in R](https://github.com/deniseroth97/workshop_comptext2024/blob/main/README.md#basics-in-r)
 
 # Basics in R
 

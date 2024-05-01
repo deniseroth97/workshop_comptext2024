@@ -1,0 +1,103 @@
+---
+title: "Text Pre-Processing (quanteda)"
+author: "Denise J. Roth"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Text Preprocessing
+
+## First things first: Setting up by installing all necessitities
+
+We will now have a closer look at what it actually means to pre-process our textual data. Jumping from a full set of documents, what we often call a _corpus_ to a Document-Term Matrix (DTM) and using this immediately for analysis would be rather crude. 
+Normally, there are several steps that come prior to this.
+Let's have a look. 
+
+
+```{r Install required packages}
+install.packages(c("tidyverse","quanteda", "quanteda.textplots", "quanteda.textstats"))
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(tidyverse)
+```
+
+
+## Loading in the data
+
+Let's use the State of the Union speeches as our corpus. Each document is (i.e. row in the csv) consists of a paragraph. The ```csv``` file we are using here is available online. We use the ```read_csv()``` to read in the data to R and assign it to an object. This way, our _dataframe_ will show up in our environment. 
+
+```{r}
+url <- 'https://bit.ly/2QoqUQS'
+data <- read_csv(url)
+head(data)
+```
+
+
+## Creating a corpus
+
+Even though dataframes are nice to work with as they are very structure, the ```quanteda``` requires our textual data to be in the shape of a corpus object. In order to do so, we must specify the text column in our dataframe and this column must be a _character_ column, which is typical and usually preferably for a column containing any sort of text.
+
+
+```{r}
+sotu_corp <- corpus(data, text_field = 'text')  ## create the corpus
+sotu_corp
+```
+
+
+
+## Creating DTM
+Now that we have our corpus, we should think about whether all of the textual is actually useful for subsequent analysis. 
+Can you think of any features (tokens) that are more or less informative?
+*Tokens* are the individual units of text data, such as words or characters, that have been extracted or identified from the original text. In text analysis, text data is typically broken down into tokens for further processing and analysis.
+Tokens are the basic building blocks used for representing and analyzing text data in various text mining and natural language processing tasks
+
+
+```{r}
+dtm <- sotu_corp |>
+  tokens(remove_punct = T, remove_numbers = T, remove_symbols = T) |>   
+  tokens_tolower() |>                                                    
+  tokens_remove(stopwords('en')) |>                                     
+  tokens_wordstem() |>
+  dfm()
+dtm
+```
+
+What do you think happens in the code above?
+
+## Inspection of our Document-Term Matrix
+
+```{r}
+textplot_wordcloud(dtm, max_words = 50)                          ## this will plot the 50 most frequent words
+textplot_wordcloud(dtm, max_words = 50, color = c('blue','red')) ## change colors; you can also try out different colors
+textstat_frequency(dtm, n = 10)  
+```
+
+
+## How are and have US Presidents been talking about specific issues?
+We can use keyword-in-context listing to search a specific term. Let's create a DTM  that only contains words that occur within 10 words from environment*.
+
+```{r}
+environment <- kwic(tokens(sotu_corp), 'environment*')
+environment_corp <- corpus(environment)
+environment_dtm <- environment_corp |>
+  tokens(remove_punct = T, remove_numbers = T, remove_symbols = T) |>
+  tokens_tolower() |>
+  tokens_remove(stopwords('en')) |>
+  tokens_wordstem() |>
+  dfm()
+```
+
+
+Let's visualize this:
+
+```{r}
+textplot_wordcloud(environment_dtm, max_words = 50) 
+```
+
+## Conclusion
+
+Which specific steps one takes to pre-process the textual data in question is strongly dependent on the research project one is involved in.
+Keep in mind that there is no "standard" rule. There may instances where punctuation is highly informative. In other cases, someone may specifically be interested in whether certain terms are being capitalized or not. The choices we make at this stage of the process will have a significant impact on anything that follows. 
+
+
+

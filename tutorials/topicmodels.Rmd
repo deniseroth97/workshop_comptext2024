@@ -1,0 +1,108 @@
+---
+title: "Topic Models"
+author: "Denise J. Roth"
+date: "`r Sys.Date()`"
+output: html_document
+---
+# Topic Models
+
+
+## Setting Up
+
+As is the case any time we want to use R, we must specify which and potentially install the packages that are necessary to conduct the analysis we envision for our data. For running LDA topic models, we need the ```topicmodels``` package. 
+
+
+```{r}
+install.packages(c("topicmodels", "LDAvis"))
+library(quanteda)
+library(quanteda.textplots)
+library(LDAvis)
+library(topicmodels)
+library(wordcloud)
+```
+
+
+## Re-Using of our DTM
+For this exercise, we will still use the DTM we created based on the corpus of SOTU addresses by US President until 2014. We will only make one additional change: We will remove features that appear fewer than 5 times. 
+
+```{r}
+dtm2 <- dfm_trim(dtm, min_docfreq = 5)
+```
+
+
+## Running an LDA Topic Model 
+
+We now have convert our DTM to topicmodels format in order for the model to be able to run. Additionally, it is very important to set a seed before running topicmodels. This will make sure that other your research can be reproduced!
+
+```{r}
+tm_dtm = convert(dtm2, to = "topicmodels") 
+set.seed(1)
+model = LDA(tm_dtm, method = "Gibbs", k = 10,  control = list(alpha = 0.1))
+model
+```
+
+## Inspection 
+
+We can ask R to give us the top 10 terms per model. 
+
+```{r}
+terms(model, 10)
+```
+
+We could also take a look at the posterior distribution of words and documents to topics. We can use this to plot a word cloud of the terms proportional to their occurence.
+Let's have a closer look at Topic 3
+
+```{r}
+topic = 3
+relevant_words = posterior(model)$terms[topic, ]
+top_words = head(sort(relevant_words, decreasing = T), n=50)
+head(top_words)
+
+wordcloud(names(top_words), top_words)
+```
+
+## By whom are which topics the discussed the most?
+
+Based on the most relevant terms as illustrated by our wordcloud, we can interpret that this topic seems to focus on fiscal politics. 
+This begs the question who discusses which of the proposed topics the most.
+
+```{r}
+docs = docvars(dtm2)[match(rownames(tm_dtm), docnames(dtm2)),]
+tpp = aggregate(posterior(model)$topics, by=docs["President"], mean)
+rownames(tpp) = tpp$President
+heatmap(as.matrix(tpp[-1]))
+```
+
+
+
+
+## Visualization of LDA Topic Models with LDAvis
+```{r}
+dtm2 = dtm2[slam::row_sums(dtm2) > 0, ]
+phi = as.matrix(posterior(model)$terms)
+theta <- as.matrix(posterior(model)$topics)
+vocab <- colnames(phi)
+doc.length = slam::row_sums(dtm2)
+term.freq = slam::col_sums(dtm2)[match(vocab, colnames(dtm2))]
+
+json = createJSON(phi = phi, theta = theta, vocab = vocab,
+     doc.length = doc.length, term.frequency = term.freq)
+serVis(json)
+```
+
+## How do I choose the "correct" amount of topics?
+
+We chose 10 topics for our LDA topic models. This was a rather arbitrary number. Validation is the key to good analysis. If you use LDA mostly to explore your data, then establishing a certain degree of face validity is somewhat sufficient. 
+If you use it for truly unsupervised machine learning, however, you should make sure that coherence and interpretability is achieved. 
+
+
+
+
+
+
+
+
+
+
+
+

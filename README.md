@@ -235,3 +235,136 @@ We can ask R to give us the top 10 terms per model.
 terms(model, 10)
 ```
 
+
+# Lexical Sentiment Analysis
+
+
+## Setting Up
+
+Let's install and load the necessary packages for this exercise. There are several packages in R that contain sentiment dictionaries.
+For this exercise, we will have a closer look at the ```SentimentAnalysis``` package, and specifically at the ```DictionaryGI```, which is a general sentiment dictionary based on The General Inquirer.
+
+
+```{r}
+install.packages(c("corpustools", "SentimentAnalysis"))
+library(quanteda)
+library(quanteda.textplots)
+library(quanteda.textstats)
+library(corpustools)
+library(SentimentAnalysis)
+library(tidyverse)
+```
+
+## Creating the DTM and Taking Preprocessing Steps
+We will again use the State of the Union addresses, which are incorporated in the Quanteda package. 
+
+
+```{r}
+corp <- corpus(sotu_texts, docid_field = 'id', text_field = 'text')
+dtm <- corp |>
+  tokens() |>
+  tokens_tolower() |>
+  dfm()
+dtm
+```
+
+
+
+## The General Inquirer Dictionary
+
+Let's inspect some of the words in our dictionary that indicate negative sentiment. 
+
+```{r}
+?DictionaryGI
+names(DictionaryGI)
+head(DictionaryGI$negative, 27)
+```
+
+## Transforming the DictionaryGI list to a quanteda dictionary
+
+In order to be able to use quanteda functions, we must transform the list to an object that is useable for us.
+
+```{r}
+dict_GI <- dictionary(DictionaryGI)
+```
+
+```{r}
+result <- dtm |>
+  dfm_lookup(dict_GI) |> 
+  convert(to = "data.frame") |>
+  as_tibble()
+result
+```
+
+## Adding the word count 
+
+```{r}
+result <- result |> 
+  mutate(length = ntoken(dtm))
+```
+
+
+## Sentiment Score 
+Let's consider calculating an overall sentiment score. There are several options we can explore, but a popular approach involves subtracting the count of negative sentiments from the count of positive sentiments. We then divide this by either the total number of words or by the number of sentiment words. Additionally, we can gauge the level of subjectivity expressed to understand the extent of sentiment conveyed overall.
+
+
+```{r}
+result <- result |> 
+  mutate(sentiment1=(positive - negative) / (positive + negative),
+         sentiment2=(positive - negative) / length,
+         subjectivity=(positive + negative) / length)
+result
+```
+
+These scores serve as indicators of sentiment and subjectivity on a per-document basis. To conduct a meaningful analysis, we coul merge these scores back into our metadata or document variables. This allows for the computation of sentiment metrics based on various attributes such as the document's source, actor, or temporal characteristics.
+
+
+## Validation, validation, validation!
+
+
+For a comprehensive assessment of a sentiment dictionary's accuracy, it's advisable to manually annotate a random subset of documents and juxtapose these annotations against the dictionary-derived results. This methodology should be clearly outlined in the methods section of any research paper employing a sentiment dictionary.
+
+To generate a random subset from the original dataset, we can utilize the sample function.
+
+```{r}
+sample_ids <- sample(docnames(dtm), size=50)
+```
+
+```{r}
+## convert quanteda corpus to data.frame
+docs <- docvars(corp)
+docs$doc_id = docnames(corp)
+docs$text = as.character(corp)
+
+docs |> 
+  filter(doc_id %in% sample_ids) |> 
+  mutate(manual_sentiment="") |>
+  write_csv("to_code.csv")
+```
+
+Following this, you can export the sampled data to Excel, where you can manually assign sentiment labels to each document by populating the sentiment column. Subsequently, you can import the annotated data back into your analysis environment and merge it with the previously obtained results. It's worth mentioning that I've renamed the columns and converted the document identifier into a character column to streamline the matching process.
+
+
+```{r}
+validation = read_csv("to_code.csv") |>
+  mutate(doc_id=as.character(doc_id)) |>
+  inner_join(result)
+
+cor.test(validation$manual_sentiment, validation$sentiment1)
+
+validation <- validation |> 
+  mutate(sent_nom = cut(sentiment1, breaks=c(-1, -0.1, 0.1, 1), labels=c("-", "0", "+")))
+cm <- table(manual = vali3dation$manual_sentiment, dictionary = validation$sent_nom)
+cm
+
+sum(diag(cm)) / sum(cm)
+```
+
+We have the option to conduct a correlation analysis between the manually annotated sentiment labels and the dictionary-derived sentiment scores. Additionally, by converting the sentiment scores into a nominal value using the cut function, we can generate a "confusion matrix" to further evaluate the agreement between the manual annotations and the dictionary results.
+
+
+## Creating one's own dictionary
+
+Sentiment analysis frequently relies on a dictionary-based methodology, where predefined word lists or dictionaries are utilized to assess sentiment in textual data. It's worth noting that analysts have the option to develop their own dictionaries, offering a more customized approach tailored to their specific needs or research goals.
+
+

@@ -1,0 +1,92 @@
+---
+title: "Basics in R"
+author: "Denise J. Roth"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# What are functions in R? 
+
+A function in R is a block of code that performs a specific task when called. They typical take input parameters, perform operations on them, and then return a result based on these operations. They encapsulate commonly used operations into a single unit, making one's own work more transparent and reproducible. 
+R already comes with a lot of built-in functions. 
+
+Let's look at an example:
+
+
+```{r Example of built-in function}
+# Creating a vector of numbers
+numbers <- c(2, 4, 6, 8, 10)
+
+# Calculate the mean of the numbers using the mean()
+average <- mean(numbers)
+
+# Print the result
+print(average)
+```
+
+The flexibility of R allows us to also write our own functions for very specific tasks and operations. 
+
+What could this look?
+
+```{r Writing a function}
+# Defining the function
+addition <- function(x, y) {
+  sum <- x + y
+  return(sum)
+}
+
+# Call the function with arguments 3 and 5
+result <- addition(3, 5)
+
+# Print the result
+print(result)
+```
+
+## What is the meaning of the "->"-operator?
+
+In R, the "->" symbol is used for assigning values to variables. It's like saying "put this value into that box." So when you see something like x -> y, it means the value of x is stored in the variable y.
+
+R is an _object-oriented_ programming language - in simple terms, it means that everything in R is treated as an object. An object is like a container that holds data and functions that can work with that data. So when you're working in R, you're usually creating, manipulating, or using objects.
+
+For example, when you create a variable like x <- 5, x is an object that holds the value 5. And when you perform operations or functions on x, you're essentially interacting with that object.
+
+In our environment, we can see the objects to which we have assigned any sort of value etc.
+
+
+```{r Objects}
+random_object <- 27
+
+print(random_object)
+```
+
+# Packages in R
+
+In R, a package is like a toolbox filled with useful tools for specific tasks. Each package contains a collection of functions, datasets, and other resources designed to help you tackle certain problems more efficiently.
+
+Packages make it easier to extend R's capabilities beyond its built-in functions. They're created and maintained by members of the R community, and you can easily install them using the ```install.packages()``` function.
+
+
+```{r Installing packages}
+install.packages("tidyverse")
+```
+
+
+Let's try using some functions that is found in the ```tidyverse``` package!
+
+
+```{r}
+
+# Defining an example data frame
+example_data <- tibble(
+  name = c("Alice", "Bob", "Charlie"),
+  age = c(25, 30, 35)
+)
+
+# Attemptong to filtering data and keeping only the cases older than 30
+plus_30s <- example_data |> 
+  filter(age > 30)
+```
+
+*Important*: If we want to use a package and its functions/datasets/resources, we need to use the ```library()``` function to load the package. Otherwise, R will not know what we are referring to. 
+
+

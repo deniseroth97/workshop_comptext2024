@@ -368,3 +368,134 @@ We have the option to conduct a correlation analysis between the manually annota
 Sentiment analysis frequently relies on a dictionary-based methodology, where predefined word lists or dictionaries are utilized to assess sentiment in textual data. It's worth noting that analysts have the option to develop their own dictionaries, offering a more customized approach tailored to their specific needs or research goals.
 
 
+
+# Supervised Machine Learning for Automatic Text Classification
+
+## Setting up 
+```{r}
+install.packages("tidymodels")
+```
+
+
+## Getting Data 
+
+To train machine learning models, annotated training data is essential. Luckily, numerous review datasets are accessible for free. In this exercise, we'll utilize a collection of Amazon movie reviews stored as CSV files on our GitHub repository. For additional Amazon product reviews, including more recent ones, you can explore http://deepyeti.ucsd.edu/jianmo/amazon/index.html.
+
+
+```{r}
+library(tidyverse)
+reviews = read_csv("https://raw.githubusercontent.com/ccs-amsterdam/r-course-material/master/data/reviews2.csv")
+head(reviews)
+table(reviews$overall)
+```
+
+
+Before we begin, let's establish a binary rating system based on the numerical overall rating.
+
+```{r}
+reviews = mutate(reviews, rating=as.factor(ifelse(overall==5, "good", "bad")))
+```
+
+The objective of this tutorial is to conduct supervised sentiment analysis, specifically, to predict the star rating based on the review text.
+
+
+## Creating corpus
+
+To commence, we'll utilize ```quanteda``` for textual preprocessing and ```quanteda.textmodels``` for running the machine learning algorithms.
+
+Initially, we'll construct a corpus incorporating both the summary and review text. Additionally, we'll establish a binary rating system alongside the numeric overall score.
+
+```{r}
+library(quanteda)
+review_corpus = reviews |> 
+  mutate(text = paste(summary, reviewText, sep="\n\n"),
+         doc_id = paste(asin, reviewerID, sep=":")) |>
+  select(-summary, -reviewText) |>
+  corpus()
+```
+
+Next, we'll divide the corpus into training and testing sets, ensuring reproducibility by setting the seed.
+
+```{r}
+set.seed(1)
+testset = sample(docnames(review_corpus), 2000)
+reviews_test =  corpus_subset(review_corpus, docnames(review_corpus) %in% testset)
+reviews_train = corpus_subset(review_corpus, !docnames(review_corpus) %in% testset)
+```
+
+## Model Training
+
+Initially, we'll generate a Document-Feature Matrix (DFM) from the training dataset, implementing stemming and trimming.
+
+```{r}
+dfm_train = reviews_train |> 
+  tokens() |>
+  dfm() |> 
+  dfm_wordstem(language='english') |>
+  dfm_select(min_nchar = 2) |>
+  dfm_trim(min_docfreq=10)
+```
+
+Now, we can proceed to train a model, such as a Naive Bayes classifier.
+
+```{r}
+library(quanteda.textmodels)
+rating_train = docvars(reviews_train, field="rating")
+m_nb <- textmodel_nb(dfm_train, rating_train)
+```
+
+We can further examine the Naive Bayes (NB) parameters to identify the most significant predictors. These parameters represent the 'class conditional posterior estimates' (P(w|C)), but our interest lies in the opposite direction. By applying Bayes’ theorem (P(C|w) = P(w|C) * P(C) / P(w)), and assuming an equal prior distribution of classes, we can simplify to P(good|w) = P(w|good) / (P(w|good) + P(w|bad)).
+
+```{r}
+scores = t(m_nb$param) |> 
+  as_tibble(rownames = "word") |> 
+  mutate(relfreq=bad+good,
+         bad=bad/relfreq,
+         good=good/relfreq) 
+scores |>
+  filter(relfreq > .0001) |>
+  arrange(-bad) |>
+  head()
+```
+
+## Model Testing
+
+To evaluate the model's performance, we apply it to the test data. It's crucial that the test data incorporates the same features (vocabulary) as the training data. The model comprises parameters for these features, not for words exclusive to the test data. Therefore, we skip the selection and trimming steps and instead adjust the test vocabulary (DFM columns) to match those in the training set.
+
+```{r}
+dfm_test = reviews_test |> 
+  tokens() |>
+  dfm() |> 
+  dfm_wordstem(language='english') |>
+  dfm_match(featnames(dfm_train))
+```
+
+Subsequently, we can classify the test data into their respective classes.
+
+```{r}
+nb_pred <- predict(m_nb, newdata = dfm_test)
+head(nb_pred)
+```
+
+What can we see?
+
+```{r}
+predictions = docvars(reviews_test) |>
+  as_tibble() |>
+  add_column(prediction=nb_pred)
+predictions |> 
+  mutate(correct=prediction == rating) |>
+  summarize(accuracy=mean(correct))
+```
+
+
+```{r}
+library(tidymodels)
+metrics = metric_set(accuracy, precision, recall, f_meas)
+metrics(predictions, truth = rating, estimate = prediction)
+conf_mat(predictions, truth = rating, estimate = prediction)
+```
+
+
+
+

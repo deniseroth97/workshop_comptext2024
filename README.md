@@ -190,3 +190,48 @@ Which specific steps one takes to pre-process the textual data in question is st
 Keep in mind that there is no "standard" rule. There may instances where punctuation is highly informative. In other cases, someone may specifically be interested in whether certain terms are being capitalized or not. The choices we make at this stage of the process will have a significant impact on anything that follows. 
 
 
+# Topic Models
+
+
+## Setting Up
+
+As is the case any time we want to use R, we must specify which and potentially install the packages that are necessary to conduct the analysis we envision for our data. For running LDA topic models, we need the ```topicmodels``` package. 
+
+
+```{r}
+install.packages(c("topicmodels", "LDAvis"))
+library(quanteda)
+library(quanteda.textplots)
+library(LDAvis)
+library(topicmodels)
+library(wordcloud)
+```
+
+
+## Re-Using of our DTM
+For this exercise, we will still use the DTM we created based on the corpus of SOTU addresses by US President until 2014. We will only make one additional change: We will remove features that appear fewer than 5 times. 
+
+```{r}
+dtm2 <- dfm_trim(dtm, min_docfreq = 5)
+```
+
+
+## Running an LDA Topic Model 
+
+We now have convert our DTM to topicmodels format in order for the model to be able to run. Additionally, it is very important to set a seed before running topicmodels. This will make sure that other your research can be reproduced!
+
+```{r}
+tm_dtm = convert(dtm2, to = "topicmodels") 
+set.seed(1)
+model = LDA(tm_dtm, method = "Gibbs", k = 10,  control = list(alpha = 0.1))
+model
+```
+
+## Inspection 
+
+We can ask R to give us the top 10 terms per model. 
+
+```{r}
+terms(model, 10)
+```
+
